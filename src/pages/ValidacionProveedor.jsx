@@ -14,6 +14,7 @@ import clsx from 'clsx';
 import Paper from '@material-ui/core/Paper';
 import { useState } from 'react';
 import axios from 'axios';
+import { spacing } from '@material-ui/system';
 
 function Copyright() {
   return (
@@ -33,35 +34,60 @@ function ValidacionProveedor() {
   const [dataruc, setDataRuc] = useState(null);//Iniciándolo estado
   const [cedula, setCedula] = useState('');//Iniciándolo estado
   const [datacedula, setDataCedula] = useState(null);//Iniciándolo estado
+  const [proveedorEstado, setProveedorEstado] = useState(null);//Iniciándolo estado
   const getValueRuc = e => {
-    // const val = e.target.value;
-    // if (e.target.validity.valid) this.setState({message: e.target.value});
-    // else if (val === '' || val === '-') this.setState({message: val});
-    console.log(e.target.value);
     setRuc(e.target.value);
   };
+  ///////////*************Endpoints**************//////////////////
+  /*      
+          http://172.18.9.85:9094/api/proveedor/consulta/0201506417001
+          http://172.18.9.85:9094/api/proveedor/consulta/0201506417001   
+  */
+  ///////////*************Endpoints**************//////////////////
   const buscarRuc = e => {
     var credenciales = new FormData();
+    //Credenciales generales para las peticiones
     credenciales.append('grant_type', 'password');
     credenciales.append('username', 'admin');
     credenciales.append('password', '12345');
-
+    //Sección para verificar el estado del proveedor
     var config = {
-        method: 'get',
-        mode: 'no-cors',
-        // url: `http://172.18.9.85:9091/api/sri/estadoTributario/${ruc}`,
-        //http://172.18.9.85:9094/api/proveedor/consulta/0201506417001
-        url: `http://172.18.9.85:9094/api/proveedor/consulta/${ruc}`,
-        data : credenciales
+      method: 'get',
+      mode: 'no-cors',
+      url: `http://172.18.9.85:9091/api/sri/estadoTributario/${ruc}`,
+      data : credenciales
     };
     axios(config)
     .then(function (response) {
-        console.log(response.data);
-        setDataRuc(response.data);
-    })//.then (user => this.setState ( { usuario: JSON.stringify(user.data) } ))
+        setProveedorEstado(response.data);
+    })
     .catch(function (error) {
         console.log(error);
     });
+    //Fin de petición de verificación de estado de proveedor
+    //console.log(proveedorEstado.estadoTributario);
+    let provee = proveedorEstado ? proveedorEstado.estadoTributario : 'N'
+    if (provee==='S'){//Si el proveedor está al día en sus obligaciones se realiza la segunda consulta de sus datos
+      console.log('Im inside');
+      //Sección para consultar los datos del proveedor
+      var config = {
+          method: 'get',
+          mode: 'no-cors',
+          url: `http://172.18.9.85:9095/api/soce/tgenRucContribuyentes/${ruc}`,
+          data : credenciales
+      };
+      axios(config)
+      .then(function (response) {
+          console.log(response.data);
+          setDataRuc(response.data);
+      })//.then (user => this.setState ( { usuario: JSON.stringify(user.data) } ))
+      .catch(function (error) {
+          console.log(error);
+      });
+    }
+    else{
+      console.log('Nothing to do');
+    }
   };
   const getValueCedula = e => {
     console.log(e.target.value);
@@ -117,11 +143,15 @@ function ValidacionProveedor() {
               Valide la siguiente información:
             </Typography>
             <div className={classes.root}>
-              <Grid container spacing={3}>
+              <Grid container spacing={1}>
+                <Grid item xs={2}>
+                  <Paper className={classes.paper}>Datos proveedor 
+                  </Paper>
+                  </Grid>  
                 <Grid item xs={12}>
                   <Paper className={classes.paper}>
-                    <form className={classes.form} autoComplete="off">
-                      <div align='center'>
+                    {/* <form className={classes.form} autoComplete="off"> */}
+                      <div>
                         <TextField
                             type="number"
                             label="RUC"
@@ -129,27 +159,23 @@ function ValidacionProveedor() {
                             className={clsx(classes.margin, classes.textField)}
                             variant="outlined"
                             onChange={ getValueRuc }
-                            //onKeyDown = {e => [^\d].test(e.key) && e.preventDefault()}
-                            //onKeyPress={ filterOnlyText }
-                            //pattern="^-?[0-9]\d*\.?\d*$"
                             onInput = {(e) =>{
                               e.target.value = Math.max(0, parseInt(e.target.value) ).toString().slice(0,13)
                             }}
                         />
+                        <Button className={classes.buttonPadding} onClick={ buscarRuc } variant="contained" color="primary" size="small">
+                          Buscar
+                        </Button>
                       </div>
-                      <div align='center'>
-                          <Button onClick={ buscarRuc } variant="contained" color="primary" size="small">
-                            Buscar
-                          </Button>
-                      </div>
-                    </form>
-                    {dataruc && (
+                    {/* </form> */}
+                    {/* {dataruc && ( */}
                       <form className={classes.root} noValidate autoComplete="off">
-                      <div align='center'>
+                      <div align='left'>
                         <TextField
                             disabled
                             label="Nombres"
-                            value={dataruc.nombre}
+                            //value={dataruc.nombre}
+                            value={dataruc ? dataruc.razonSocial: ''}
                             id="name"
                             className={clsx(classes.margin, classes.textField)}
                             variant="outlined"
@@ -157,6 +183,7 @@ function ValidacionProveedor() {
                         <TextField
                             disabled
                             label="Actividad económica"
+                            value={dataruc ? (dataruc.fechaInicioActividades == '' ? '---': dataruc.fechaInicioActividades) : ''}
                             id="actividad"
                             className={clsx(classes.margin, classes.textField)}
                             variant="outlined"
@@ -164,6 +191,7 @@ function ValidacionProveedor() {
                         <TextField
                             disabled
                             label="Dirección"
+                            value={dataruc ? dataruc.calle + '-' + dataruc.numero + ' ' + dataruc.interseccion: ''}
                             id="address"
                             className={clsx(classes.margin, classes.textField)}
                             variant="outlined"
@@ -171,6 +199,7 @@ function ValidacionProveedor() {
                         <TextField
                             disabled
                             label="Fecha de registro"
+                            value={dataruc ? (dataruc.fechaInicioActividades == '' ? '---': dataruc.fechaInicioActividades) : ''}
                             id="logdate"
                             className={clsx(classes.margin, classes.textField)}
                             variant="outlined"
@@ -178,92 +207,100 @@ function ValidacionProveedor() {
                         <TextField
                             disabled
                             label="Estado"
-                            value={dataruc.descripcionEstadoTributario}
+                            //value={dataruc.descripcionEstadoTributario}
+                            value={proveedorEstado ? proveedorEstado.descripcionEstadoTributario: ''}
                             id="lastname"
                             className={clsx(classes.margin, classes.textField)}
                             variant="outlined"
                         />
                       </div>
                     </form>
-                    )}
+                    {/* )} */}
                   </Paper>
                 </Grid>
               </Grid>
             </div>
+            {/* Sección de datos de la persona */}
             <div className={classes.root}>
-              <Grid container spacing={3}>
+            <br /><br />
+              <Grid container spacing={1}>
+                <Grid item xs={2}>
+                  <Paper className={classes.paper}>Datos persona
+                  </Paper>
+                </Grid>  
                 <Grid item xs={12}>
                   <Paper className={classes.paper}>
-                      <div align='center  '>
+                      <div>
                         <TextField
                             type="number"
                             label="Cédula"
                             id="cedula1"
                             onChange={ getValueCedula }
                             className={clsx(classes.margin, classes.textField)}
+                            //InputClassName={classes.TheInput}
                             variant="outlined"
                             onInput = {(e) =>{
                               e.target.value = Math.max(0, parseInt(e.target.value) ).toString().slice(0,10)
                             }}
                         />
-                      </div>
-                      <div align='center  '>
-                      <Grid container spacing={2} justify="center">
-                      <Grid item>
-                        <Button onClick={ buscarCedula } variant="contained" color="primary" size="small">
+                        <Button className={classes.buttonPadding} onClick={ buscarCedula } variant="contained" color="primary" size="small">
                           Buscar
                         </Button>
-                      </Grid>
-              </Grid>
                       </div>
                     {/* </form> */}
-                    {datacedula && (
+                    {/* {datacedula && ( */}
                         <form className={classes.root} noValidate autoComplete="off">
-                        <div align='center'>
-                          <TextField
-                              disabled
-                              label="Nombres"
-                              //value={data ? data.nombre: ''}
-                              value={datacedula.nombre}
-                              id="name"
-                              className={clsx(classes.margin, classes.textField)}
-                              variant="outlined"
-                          />
-                          <TextField
-                              disabled
-                              label="Fecha de nacimiento"
-                              id="actividad"
-                              value={datacedula.fechanacimiento}
-                              className={clsx(classes.margin, classes.textField)}
-                              variant="outlined"
-                          />
-                          <TextField
-                              disabled
-                              label="Lugar de Nacimiento"
-                              value={datacedula.lugarnacimiento}
-                              id="address"
-                              className={clsx(classes.margin, classes.textField)}
-                              variant="outlined"
-                          />
-                          <TextField
-                              disabled
-                              label="Estado Civil"
-                              value={datacedula.estadocivil}
-                              id="logdate"
-                              className={clsx(classes.margin, classes.textField)}
-                              variant="outlined"
-                          />
-                          <TextField
-                              disabled
-                              label="Nombre Cónyugue"
-                              id="lastname"
-                              value={datacedula.conyuge}
-                              className={clsx(classes.margin, classes.textField)}
-                              variant="outlined"
-                          />
-                        </div>
+                          <div align='left' >
+                            <TextField
+                                disabled
+                                label="Nombres"
+                                value={datacedula ? datacedula.nombre: ''}
+                                id="name"
+                                className={clsx(classes.margin, classes.textField)}
+                                variant="outlined"
+                            />
+                            <TextField
+                                disabled
+                                label="Fecha de nacimiento"
+                              // style={{ fontSize: 11 }}
+                                id="actividad"
+                                //value={datacedula.fechanacimiento}
+                                value={datacedula ? datacedula.fechanacimiento: ''}
+                                className={clsx(classes.margin, classes.textField)}
+                                variant="outlined"
+                            />
+                            <TextField
+                                disabled
+                                label="Lugar de Nacimiento"
+                              // style={{ fontSize: 20 }}
+                                //value={datacedula.lugarnacimiento}
+                                value={datacedula ? datacedula.lugarnacimiento: ''}
+                                id="address"
+                                className={clsx(classes.margin, classes.textField)}
+                                variant="outlined"
+                            />
+                            <TextField
+                                disabled
+                                label="Estado Civil"
+                                //style={{ fontSize: 7 }}
+                                //value={datacedula.estadocivil}
+                                value={datacedula ? datacedula.estadocivil: ''}
+                                id="logdate"
+                                className={clsx(classes.margin, classes.textField)}
+                                variant="outlined"
+                            />
+                            <TextField
+                                disabled
+                                label="Nombre Cónyugue"
+                                id="lastname"
+                                //value={datacedula.conyuge}
+                                value={datacedula ? datacedula.conyuge: ''}
+                                className={clsx(classes.margin, classes.textField)}
+                                variant="outlined"
+                            />
+                          </div>
                       </form>
-                    )}
+                    {/* )} */}
                   </Paper>
                 </Grid>
               </Grid>
@@ -290,7 +327,22 @@ function ValidacionProveedor() {
   );
 }
 //Estilos CSS
+// const styles = theme => ({
+//   buttonPadding: {    
+//     padding: '50px', 
+//     margin: '20px',  
+//   },
+// });
+
 const useStyles = makeStyles((theme) => ({
+  buttonPadding: {    
+    margin: '9px',  
+    marginTop: '20px',
+  },
+  TheInput: {
+		fontSize: '3em',
+		//lineHeight: 2.4
+	},
   root: {
         '& .MuiTextField-root': {
             margin: theme.spacing(1),
@@ -302,7 +354,7 @@ const useStyles = makeStyles((theme) => ({
     '& .MuiTextField-root': {
         margin: theme.spacing(1),
         width: '25ch',
-        textsize: "10px", 
+        fontSize: "10px",   
     },
   },
   icon: {
