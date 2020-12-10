@@ -14,7 +14,7 @@ import clsx from 'clsx';
 import Paper from '@material-ui/core/Paper';
 import { useState } from 'react';
 import axios from 'axios';
-import { spacing } from '@material-ui/system';
+import PageLoading from '../components/PageLoading';
 
 function Copyright() {
   return (
@@ -30,11 +30,14 @@ function Copyright() {
 }
 //http://172.18.9.85:9091/api/sri/estadoTributario/{ruc}
 function ValidacionProveedor() {
-  const [ruc, setRuc] = useState('');//Iniciándolo estado
-  const [dataruc, setDataRuc] = useState(null);//Iniciándolo estado
-  const [cedula, setCedula] = useState('');//Iniciándolo estado
-  const [datacedula, setDataCedula] = useState(null);//Iniciándolo estado
-  const [proveedorEstado, setProveedorEstado] = useState(null);//Iniciándolo estado
+  const [ruc, setRuc] = useState('');//Iniciándo estado
+  const [dataruc, setDataRuc] = useState(null);//Iniciándo estado
+  const [cedula, setCedula] = useState('');//Iniciándo estado
+  const [datacedula, setDataCedula] = useState(null);//Iniciándo estado
+  const [proveedorEstado, setProveedorEstado] = useState(null);//Iniciándo estado
+  const [buttonRucActivate, setbuttonRucActivate] = useState(true);//Iniciándo estado
+  const [buttonCedulaActivate, setbuttonCedulaActivate] = useState(true);//Iniciándo estado
+  const [loading, setLoading] = useState(false);//Iniciándo estado
   const getValueRuc = e => {
     setRuc(e.target.value);
   };
@@ -69,6 +72,9 @@ function ValidacionProveedor() {
     let provee = proveedorEstado ? proveedorEstado.estadoTributario : 'N'
     if (provee==='S'){//Si el proveedor está al día en sus obligaciones se realiza la segunda consulta de sus datos
       console.log('Im inside');
+      setbuttonRucActivate(false)
+      console.log(buttonRucActivate)
+      setLoading(true)
       //Sección para consultar los datos del proveedor
       var config = {
           method: 'get',
@@ -80,9 +86,12 @@ function ValidacionProveedor() {
       .then(function (response) {
           console.log(response.data);
           setDataRuc(response.data);
+          setLoading(false)
+          setbuttonCedulaActivate(false)
       })//.then (user => this.setState ( { usuario: JSON.stringify(user.data) } ))
       .catch(function (error) {
           console.log(error);
+          setLoading(false)
       });
     }
     else{
@@ -94,11 +103,12 @@ function ValidacionProveedor() {
     setCedula(e.target.value);
   };
   const buscarCedula = e => {
+    console.log('Llego aqui')
     var credenciales = new FormData();
     credenciales.append('grant_type', 'password');
     credenciales.append('username', 'admin');
     credenciales.append('password', '12345');
-
+    setLoading(true)
     var config = {
         method: 'get',
         mode: 'no-cors',
@@ -109,9 +119,11 @@ function ValidacionProveedor() {
     .then(function (response) {
         console.log(response.data);
         setDataCedula(response.data);
+        setLoading(false)
     })//.then (user => this.setState ( { usuario: JSON.stringify(user.data) } ))
     .catch(function (error) {
         console.log(error);
+        setLoading(false)
     });
   };
   /////////////////************//////////////////
@@ -135,6 +147,10 @@ function ValidacionProveedor() {
           {/* <Button color="inherit">Login</Button> */}
         </Toolbar>
       </AppBar>
+      {
+        loading && 
+        <PageLoading className="text-center" />
+      }
       <main>
         {/* Hero unit */}
         <div className={classes.heroContent}>
@@ -221,6 +237,7 @@ function ValidacionProveedor() {
               </Grid>
             </div>
             {/* Sección de datos de la persona */}
+           
             <div className={classes.root}>
             <br /><br />
               <Grid container spacing={1}>
@@ -234,6 +251,7 @@ function ValidacionProveedor() {
                         <TextField
                             type="number"
                             label="Cédula"
+                            disabled={buttonRucActivate}
                             id="cedula1"
                             onChange={ getValueCedula }
                             className={clsx(classes.margin, classes.textField)}
@@ -243,7 +261,7 @@ function ValidacionProveedor() {
                               e.target.value = Math.max(0, parseInt(e.target.value) ).toString().slice(0,10)
                             }}
                         />
-                        <Button className={classes.buttonPadding} onClick={ buscarCedula } variant="contained" color="primary" size="small">
+                        <Button disabled={buttonRucActivate} className={classes.buttonPadding} onClick={ buscarCedula } variant="contained" color="primary" size="small">
                           Buscar
                         </Button>
                       </div>
@@ -308,7 +326,7 @@ function ValidacionProveedor() {
             <div className={classes.heroButtons}>
               <Grid container spacing={2} justify="center">
                 <Grid item>
-                  <Button variant="contained" color="primary">
+                  <Button disabled={buttonCedulaActivate} variant="contained" color="primary">
                     Continuar
                   </Button>
                 </Grid>
